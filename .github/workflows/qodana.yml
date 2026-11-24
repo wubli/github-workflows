@@ -1,0 +1,71 @@
+name: Qodana
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: 'Runner label or expression'
+        required: false
+        type: string
+        default: ubuntu-latest
+      java-distribution:
+        description: 'JDK distribution for actions/setup-java'
+        required: false
+        type: string
+        default: corretto
+      java-version:
+        description: 'JDK version for actions/setup-java'
+        required: true
+        type: string
+      args:
+        description: 'Extra arguments passed to JetBrains/qodana-action'
+        required: false
+        type: string
+        default: ''
+      use-caches:
+        description: 'Enable Qodana caches'
+        required: false
+        type: boolean
+        default: true
+      pr-mode:
+        description: 'Enable PR mode when triggered on pull_request'
+        required: false
+        type: boolean
+        default: true
+      timeout-minutes:
+        description: 'Job timeout in minutes'
+        required: false
+        type: number
+        default: 60
+    secrets:
+      QODANA_TOKEN:
+        description: 'Qodana Cloud project token'
+        required: false
+
+jobs:
+  scan:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Free disk space on GitHub-hosted runners
+        if: runner.environment == 'github-hosted'
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/lib/android /usr/local/.ghcup
+          df -h /
+      - uses: actions/setup-java@v5
+        with:
+          distribution: ${{ inputs.java-distribution }}
+          java-version: ${{ inputs.java-version }}
+      - uses: JetBrains/qodana-action@4861e015da555e86a72b862892aba6c2b93e6891 # v2026.1
+        with:
+          args: ${{ inputs.args }}
+          use-caches: ${{ inputs.use-caches }}
+          upload-result: true
+          pr-mode: ${{ inputs.pr-mode && github.event_name == 'pull_request' }}
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+          QODANA_ENDPOINT: https://qodana.cloud
