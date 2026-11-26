@@ -6,7 +6,9 @@ Reusable GitHub Actions workflows.
 
 ### `qodana.yml`
 
-Wraps `JetBrains/qodana-action` with `actions/checkout`, optional GitHub-hosted runner disk cleanup (`runner.environment == 'github-hosted'`), and `actions/setup-java`.
+Checks out the pull request head, or the triggering commit for other events,
+with full Git history. The workflow frees disk space on GitHub-hosted runners,
+sets up Java, and runs `JetBrains/qodana-action` with result uploads enabled.
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -40,7 +42,11 @@ jobs:
 
 ### `docker-ghcr.yml`
 
-Wraps `docker/setup-buildx-action`, optional branch-HEAD stale-run guard, `docker/login-action` to `ghcr.io` (using `github.token`), `docker/metadata-action`, and `docker/build-push-action`.
+Checks out the triggering revision and configures Buildx. When publishing,
+the workflow logs in to `ghcr.io` with `github.token`. If `guard-branch` is
+set, the workflow compares that branch's head with the triggering commit
+before building and pushing the image. A different head skips the build and
+push, and an API failure or missing SHA fails the job.
 
 | Input | Type | Default | Description |
 | --- | --- | --- | --- |
@@ -49,8 +55,8 @@ Wraps `docker/setup-buildx-action`, optional branch-HEAD stale-run guard, `docke
 | `file` | `string` | `''` | Optional Dockerfile path |
 | `image` | `string` | `''` | Target image name (defaults to `ghcr.io/<owner>/<repo>`) |
 | `push` | `boolean` | `false` | Push built image to GHCR |
-| `guard-branch` | `string` | `''` | When `push` is true, skip push if `heads/<guard-branch>` moved past `github.sha` |
-| `metadata-tags` | `string` | `latest` on default branch + full `sha` | Newline-delimited tags passed to `docker/metadata-action` |
+| `guard-branch` | `string` | `''` | When `push` is true, build and push only if `heads/<guard-branch>` matches `github.sha` |
+| `metadata-tags` | `string` | Full commit SHA with no prefix, plus `latest` on the default branch | Newline-delimited tags passed to `docker/metadata-action` when publishing or when `image` is set |
 | `max-parallelism` | `number` | `2` | BuildKit `[worker.oci]` `max-parallelism` |
 | `timeout-minutes` | `number` | `45` | Job timeout in minutes |
 
